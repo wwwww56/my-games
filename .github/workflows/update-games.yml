@@ -26,7 +26,7 @@ jobs:
       - name: 抓取最新游戏数据并更新 games.json
         run: |
           cat << 'EOF' > fetch_games.py
-          import requests, json
+          import requests, json, re
           from bs4 import BeautifulSoup
 
           url = 'https://www.lizisy.com/wap/?tgid=426'
@@ -37,47 +37,53 @@ jobs:
               res = requests.get(url, headers=headers, timeout=20)
               res.encoding = 'utf-8'
               soup = BeautifulSoup(res.text, 'html.parser')
-              
+
               games = []
-              # 注意：这里的选择器可能需要根据网站实际 HTML 修改。
-              # 我们先尝试广泛匹配，再限制数量，确保能抓到前5个。
-              # 通常移动端页面的游戏列表会在 ul/li 结构里
-              items = soup.find_all('li')[:20]  # 先抓前20个li，过滤出有图片和链接的
-              
-              for li in items:
-                  a = li.find('a')
-                  img = li.find('img')
-                  if not a or not img:
-                      continue
-                  
-                  name = a.get_text(strip=True)
-                  if not name or len(name) < 2: # 过滤掉空文本或太短的
-                      continue
-                  
-                  # 提取图片，处理懒加载
-                  icon_url = img.get('src') or img.get('data-src') or img.get('data-original') or ''
-                  
-                  # 提取链接
-                  href = a.get('href', '')
-                  if not href.startswith('http'):
-                      href = 'https://www.lizisy.com' + href
-                  
-                  # 构造游戏数据
-                  games.append({
-                      'name': name,
-                      'icon': icon_url,
-                      'tags': ['最新上架'],
-                      'desc': '最新上架热门游戏，快来体验！',
-                      'url': href
-                  })
-                  
-                  if len(games) >= 5: # 只要前5个
-                      break
-              
+              # 精准定位“热门推荐”游戏列表容器
+              container = soup.select_one('ul.zy_game_lb')
+              if container:
+                  items = container.select('li.game_item')[:5]  # 取前5个游戏
+                  for li in items:
+                      a = li.find('a')
+                      img = li.find('img')
+                      h3 = li.find('h3')
+                      if not (a and h3):
+                          continue
+                      
+                      name = h3.get_text(strip=True)
+                      icon_url = img.get('src', '') if img else ''
+                      
+                      # 处理图片地址（http:// 或 相对路径）
+                      if icon_url.startswith('//'):
+                          icon_url = 'https:' + icon_url
+                      elif icon_url.startswith('/'):
+                          icon_url = 'https://www.lizisy.com' + icon_url
+                      
+                      href = a.get('href', '')
+                      if not href.startswith('http'):
+                          href = 'https://www.lizisy.com' + href
+                      
+                      # 提取标签（如"仙侠 角色"、"专服"等）
+                      tags = []
+                      p_tag = li.select_one('.game_con p')
+                      if p_tag:
+                          tags = p_tag.get_text(strip=True).split()
+                      fl_tag = li.select_one('.game_fl span')
+                      if fl_tag:
+                          tags.append(fl_tag.get_text(strip=True))
+                      
+                      games.append({
+                          'name': name,
+                          'icon': icon_url,
+                          'tags': tags if tags else ['热门推荐'],
+                          'desc': f'{name}，热门推荐游戏，快来体验！',
+                          'url': href
+                      })
+
               with open('games.json', 'w', encoding='utf-8') as f:
                   json.dump(games, f, ensure_ascii=False, indent=2)
-              
-              print(f'成功抓取 {len(games)} 个游戏数据')
+
+              print(f'成功抓取 {len(games)} 个游戏')
           except Exception as e:
               print('抓取失败:', e)
               raise e
