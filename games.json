@@ -1,1 +1,47 @@
-[]
+[
+  {
+    "name": "英雄连城（0.1折梦回大唐）",
+    "icon": "http://oss.lizisy.com/upload/operator/20260930/71223448d6d711f964247890910358ec.png",
+    "tags": [
+      "热门推荐"
+    ],
+    "desc": "英雄连城（0.1折梦回大唐），热门推荐游戏，快来体验！",
+    "url": "https://www.lizisy.com/wg/426/21228.html"
+  },
+  {
+    "name": "梦幻剑轨迹（0.1折每日领648）",
+    "icon": "http://oss.lizisy.com/data/upload/game/20260917/6aabb50fca36d.png",
+    "tags": [
+      "热门推荐"
+    ],
+    "desc": "梦幻剑轨迹（0.1折每日领648），热门推荐游戏，快来体验！",
+    "url": "https://www.lizisy.com/wg/426/21137.html"
+  },
+  {
+    "name": "风云三国2（0.05折每日送2000）",
+    "icon": "http://oss.lizisy.com/data/upload/game/20260915/6aa911784ef03.png",
+    "tags": [
+      "热门推荐"
+    ],
+    "desc": "风云三国2（0.05折每日送2000），热门推荐游戏，快来体验！",
+    "url": "https://www.lizisy.com/wg/426/21095.html"
+  },
+  {
+    "name": "御剑九宫（0.1折天天648）",
+    "icon": "http://oss.lizisy.com/upload/operator/20260909/a593b9dc0e3521769f7e2a65ecb947f7.png",
+    "tags": [
+      "热门推荐"
+    ],
+    "desc": "御剑九宫（0.1折天天648），热门推荐游戏，快来体验！",
+    "url": "https://www.lizisy.com/wg/426/21057.html"
+  },
+  {
+    "name": "吟游战记（0.1折）",
+    "icon": "http://oss.lizisy.com/data/upload/game/20260824/6a8c040916ac3.png",
+    "tags": [
+      "热门推荐"
+    ],
+    "desc": "吟游战记（0.1折），热门推荐游戏，快来体验！",
+    "url": "https://www.lizisy.com/wg/426/21011.html"
+  }
+]
