@@ -1,10 +1,9 @@
-name: 每日更新游戏数据
+name: 每日更新游戏数据（调试版）
 
 on:
   schedule:
-    # 每天 UTC 0点（北京时间早上8点）自动执行一次
     - cron: '0 0 * * *'
-  workflow_dispatch:  # 支持在网页上手动点击触发
+  workflow_dispatch:
 
 jobs:
   update:
@@ -23,99 +22,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4
 
-      - name: 抓取最新游戏数据并更新 games.json
+      - name: 抓取并打印所有链接
         run: |
           cat << 'EOF' > fetch_games.py
-          import requests, json, re
+          import requests
           from bs4 import BeautifulSoup
 
           url = 'https://www.lizisy.com/wap/?tgid=426'
           headers = {
               'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1'
           }
-
-          games = []
-          seen_hrefs = set()
-
           try:
               res = requests.get(url, headers=headers, timeout=20)
               res.encoding = 'utf-8'
               soup = BeautifulSoup(res.text, 'html.parser')
-
               all_links = soup.find_all('a', href=True)
-              print(f'页面共找到 {len(all_links)} 个链接')
-
-              # 只匹配游戏详情页链接：/wg/数字/数字.html
-              for a in all_links:
-                  if len(games) >= 5:
-                      break
-
+              print(f'=== 页面共找到 {len(all_links)} 个链接 ===')
+              for i, a in enumerate(all_links):
                   href = a.get('href', '')
-                  if not re.search(r'/wg/\d+/\d+\.html', href):
-                      continue
-                  if href in seen_hrefs:
-                      continue
-                  seen_hrefs.add(href)
-
-                  if not href.startswith('http'):
-                      href = 'https://www.lizisy.com' + href
-
-                  # 提取游戏名称：优先 h3，其次 a 内文本
-                  name = ''
-                  h3 = a.find('h3')
-                  if h3:
-                      name = h3.get_text(strip=True)
-                  else:
-                      text = a.get_text(strip=True)
-                      name = text.split('\n')[0].strip() if text else ''
-
-                  if not name or len(name) < 2:
-                      continue
-
-                  # 提取图标
-                  img = a.find('img')
-                  if not img:
-                      parent_li = a.find_parent('li')
-                      if parent_li:
-                          img = parent_li.find('img')
-
-                  icon_url = ''
-                  if img:
-                      icon_url = img.get('src') or img.get('data-src') or img.get('data-original') or ''
-                      if icon_url.startswith('//'):
-                          icon_url = 'https:' + icon_url
-                      elif icon_url.startswith('/'):
-                          icon_url = 'https://www.lizisy.com' + icon_url
-
-                  games.append({
-                      'name': name,
-                      'icon': icon_url,
-                      'tags': ['热门推荐'],
-                      'desc': f'{name}，热门推荐游戏，快来体验！',
-                      'url': href
-                  })
-
-              print(f'成功提取 {len(games)} 个游戏')
-              for g in games:
-                  print(f'  - {g["name"]}  →  {g["url"]}')
-
+                  text = a.get_text(strip=True)
+                  print(f'[{i+1}] 文本: {text[:20]} | 链接: {href}')
           except Exception as e:
               print('抓取失败:', e)
-
-          # 兜底保护：只有成功抓取到游戏才覆盖文件
-          if len(games) > 0:
-              with open('games.json', 'w', encoding='utf-8') as f:
-                  json.dump(games, f, ensure_ascii=False, indent=2)
-              print('✅ games.json 已成功更新')
-          else:
-              print('⚠️ 未抓取到任何游戏，保留原有 games.json 内容')
           EOF
           python fetch_games.py
-
-      - name: 提交更新
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add games.json
-          git diff --staged --quiet || git commit -m "自动更新游戏数据 $(date +%Y-%m-%d)"
-          git push
