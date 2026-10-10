@@ -1,9 +1,10 @@
-name: 每日更新游戏数据（精准列表版）
+name: 每日更新游戏数据（自动清缓存版）
 
 on:
   schedule:
+    # 每天 UTC 0点（北京时间早上8点）自动执行一次
     - cron: '0 0 * * *'
-  workflow_dispatch:
+  workflow_dispatch:  # 支持在网页上手动点击触发
 
 jobs:
   update:
@@ -26,6 +27,7 @@ jobs:
       - name: 抓取最新游戏数据并更新 games.json
         run: |
           cat << 'EOF' > fetch_games.py
+          # 这里是你原有的 python 抓取脚本
           import json, re, time
           from playwright.sync_api import sync_playwright
           from bs4 import BeautifulSoup
@@ -45,60 +47,39 @@ jobs:
                   page = context.new_page()
                   print('正在打开页面...')
                   page.goto(url, wait_until='networkidle', timeout=30000)
-                  
-                  # 等待游戏列表容器渲染出来
                   try:
                       page.wait_for_selector('ul.zy_game_lb li', timeout=10000)
-                      print('游戏列表容器已渲染')
                   except:
-                      print('未找到 ul.zy_game_lb，等待 5 秒后继续')
                       time.sleep(5)
-                  
                   html = page.content()
                   browser.close()
-                  print('页面渲染完成，开始解析...')
 
               soup = BeautifulSoup(html, 'html.parser')
-
-              # 只从游戏列表容器中提取
               container = soup.select_one('ul.zy_game_lb')
               if container:
                   items = container.select('li')
-                  print(f'列表容器内找到 {len(items)} 个 li')
                   for li in items:
                       if len(games) >= 5:
                           break
                       a = li.find('a', href=True)
-                      if not a:
-                          continue
+                      if not a: continue
                       href = a.get('href', '')
-                      if not re.search(r'/wg/\d+/\d+\.html', href):
-                          continue
-                      if href in seen_hrefs:
-                          continue
+                      if not re.search(r'/wg/\d+/\d+\.html', href): continue
+                      if href in seen_hrefs: continue
                       seen_hrefs.add(href)
-
                       if not href.startswith('http'):
                           href = 'https://www.lizisy.com' + href
-
                       name = ''
                       h3 = li.find('h3')
-                      if h3:
-                          name = h3.get_text(strip=True)
-                      if not name:
-                          name = a.get_text(strip=True).split('\n')[0].strip()
-                      if not name or len(name) < 2:
-                          continue
-
+                      if h3: name = h3.get_text(strip=True)
+                      if not name: name = a.get_text(strip=True).split('\n')[0].strip()
+                      if not name or len(name) < 2: continue
                       img = li.find('img')
                       icon_url = ''
                       if img:
                           icon_url = img.get('src') or img.get('data-src') or img.get('data-original') or ''
-                          if icon_url.startswith('//'):
-                              icon_url = 'https:' + icon_url
-                          elif icon_url.startswith('/'):
-                              icon_url = 'https://www.lizisy.com' + icon_url
-
+                          if icon_url.startswith('//'): icon_url = 'https:' + icon_url
+                          elif icon_url.startswith('/'): icon_url = 'https://www.lizisy.com' + icon_url
                       games.append({
                           'name': name,
                           'icon': icon_url,
@@ -106,13 +87,7 @@ jobs:
                           'desc': f'{name}，热门推荐游戏，快来体验！',
                           'url': href
                       })
-              else:
-                  print('⚠️ 未找到 ul.zy_game_lb 容器')
-
               print(f'成功提取 {len(games)} 个游戏')
-              for g in games:
-                  print(f'  - {g["name"]}  →  {g["url"]}')
-
           except Exception as e:
               print('抓取失败:', e)
 
@@ -132,3 +107,10 @@ jobs:
           git add games.json
           git diff --staged --quiet || git commit -m "自动更新游戏数据 $(date +%Y-%m-%d)"
           git push
+
+      # 👇 新增步骤：自动清除 CDN 缓存
+      - name: 清除 CDN 缓存
+        run: |
+          echo "正在清除 jsDelivr 缓存..."
+          curl "https://purge.jsdelivr.net/gh/wwwww56/my-games@main/games.json"
+          echo "缓存清除请求已发送"
