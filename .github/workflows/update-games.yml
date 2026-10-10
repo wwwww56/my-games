@@ -2,9 +2,9 @@ name: 每日更新游戏数据
 
 on:
   schedule:
-    # 每天 UTC 0点（北京时间早8点）执行一次
+    # 每天 UTC 0点（北京时间早上8点）自动执行一次
     - cron: '0 0 * * *'
-  workflow_dispatch:  # 支持手动触发
+  workflow_dispatch:  # 支持在网页上手动点击触发
 
 jobs:
   update:
@@ -13,40 +13,76 @@ jobs:
       - name: 检出仓库
         uses: actions/checkout@v4
 
-      - name: 抓取并解析游戏数据
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 安装依赖
         run: |
+          python -m pip install --upgrade pip
           pip install requests beautifulsoup4
-          python3 << 'EOF'
-          import requests, json, re
+
+      - name: 抓取最新游戏数据并更新 games.json
+        run: |
+          cat << 'EOF' > fetch_games.py
+          import requests, json
           from bs4 import BeautifulSoup
 
           url = 'https://www.lizisy.com/wap/?tgid=426'
-          headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15'}
-          res = requests.get(url, headers=headers, timeout=15)
-          soup = BeautifulSoup(res.text, 'html.parser')
-
-          games = []
-          # 这里选择器可能需要根据实际页面结构微调，先按常见的抓
-          items = soup.select('.game_item, .zy_game_lb li, .game_list li')[:5]
-          for li in items:
-              a = li.find('a')
-              img = li.find('img')
-              name_tag = li.find('h3') or li.find('p') or li.find('.game_name')
-              if not (a and name_tag):
-                  continue
-              games.append({
-                  'name': name_tag.get_text(strip=True),
-                  'icon': (img.get('src') or img.get('data-src') or '') if img else '',
-                  'tags': ['最新上架'],
-                  'desc': '最新上架热门游戏，快来体验！',
-                  'url': a.get('href') if a.get('href', '').startswith('http') else 'https://www.lizisy.com' + a.get('href', '')
-              })
-
-          with open('games.json', 'w', encoding='utf-8') as f:
-              json.dump(games, f, ensure_ascii=False, indent=2)
-
-          print(f'已抓取 {len(games)} 个游戏')
+          headers = {
+              'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1'
+          }
+          try:
+              res = requests.get(url, headers=headers, timeout=20)
+              res.encoding = 'utf-8'
+              soup = BeautifulSoup(res.text, 'html.parser')
+              
+              games = []
+              # 注意：这里的选择器可能需要根据网站实际 HTML 修改。
+              # 我们先尝试广泛匹配，再限制数量，确保能抓到前5个。
+              # 通常移动端页面的游戏列表会在 ul/li 结构里
+              items = soup.find_all('li')[:20]  # 先抓前20个li，过滤出有图片和链接的
+              
+              for li in items:
+                  a = li.find('a')
+                  img = li.find('img')
+                  if not a or not img:
+                      continue
+                  
+                  name = a.get_text(strip=True)
+                  if not name or len(name) < 2: # 过滤掉空文本或太短的
+                      continue
+                  
+                  # 提取图片，处理懒加载
+                  icon_url = img.get('src') or img.get('data-src') or img.get('data-original') or ''
+                  
+                  # 提取链接
+                  href = a.get('href', '')
+                  if not href.startswith('http'):
+                      href = 'https://www.lizisy.com' + href
+                  
+                  # 构造游戏数据
+                  games.append({
+                      'name': name,
+                      'icon': icon_url,
+                      'tags': ['最新上架'],
+                      'desc': '最新上架热门游戏，快来体验！',
+                      'url': href
+                  })
+                  
+                  if len(games) >= 5: # 只要前5个
+                      break
+              
+              with open('games.json', 'w', encoding='utf-8') as f:
+                  json.dump(games, f, ensure_ascii=False, indent=2)
+              
+              print(f'成功抓取 {len(games)} 个游戏数据')
+          except Exception as e:
+              print('抓取失败:', e)
+              raise e
           EOF
+          python fetch_games.py
 
       - name: 提交更新
         run: |
