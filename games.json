@@ -1,0 +1,57 @@
+name: 每日更新游戏数据
+
+on:
+  schedule:
+    # 每天 UTC 0点（北京时间早8点）执行一次
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 支持手动触发
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 抓取并解析游戏数据
+        run: |
+          pip install requests beautifulsoup4
+          python3 << 'EOF'
+          import requests, json, re
+          from bs4 import BeautifulSoup
+
+          url = 'https://www.lizisy.com/wap/?tgid=426'
+          headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15'}
+          res = requests.get(url, headers=headers, timeout=15)
+          soup = BeautifulSoup(res.text, 'html.parser')
+
+          games = []
+          # 根据页面实际结构查找“最新上架”区域的前5个游戏
+          items = soup.select('.game_item, .zy_game_lb li, .game_list li')[:5]
+          for li in items:
+              a = li.find('a')
+              img = li.find('img')
+              name_tag = li.find('h3') or li.find('p') or li.find('.game_name')
+              if not (a and name_tag):
+                  continue
+              games.append({
+                  'name': name_tag.get_text(strip=True),
+                  'icon': (img.get('src') or img.get('data-src') or '') if img else '',
+                  'tags': ['最新上架'],
+                  'desc': '最新上架热门游戏，快来体验！',
+                  'url': a.get('href') if a.get('href', '').startswith('http') else 'https://www.lizisy.com' + a.get('href', '')
+              })
+
+          with open('games.json', 'w', encoding='utf-8') as f:
+              json.dump(games, f, ensure_ascii=False, indent=2)
+
+          print(f'已抓取 {len(games)} 个游戏')
+          EOF
+
+      - name: 提交更新
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add games.json
+          git diff --staged --quiet || git commit -m "自动更新游戏数据 $(date +%Y-%m-%d)"
+          git push
