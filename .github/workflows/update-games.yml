@@ -1,10 +1,9 @@
-name: 每日更新游戏数据（无头浏览器版）
+name: 每日更新游戏数据（精准列表版）
 
 on:
   schedule:
-    # 每天 UTC 0点（北京时间早上8点）自动执行一次
     - cron: '0 0 * * *'
-  workflow_dispatch:  # 支持在网页上手动点击触发
+  workflow_dispatch:
 
 jobs:
   update:
@@ -47,69 +46,68 @@ jobs:
                   print('正在打开页面...')
                   page.goto(url, wait_until='networkidle', timeout=30000)
                   
-                  # 等待游戏列表渲染
-                  time.sleep(3)
+                  # 等待游戏列表容器渲染出来
+                  try:
+                      page.wait_for_selector('ul.zy_game_lb li', timeout=10000)
+                      print('游戏列表容器已渲染')
+                  except:
+                      print('未找到 ul.zy_game_lb，等待 5 秒后继续')
+                      time.sleep(5)
                   
-                  # 获取渲染后的完整 HTML
                   html = page.content()
                   browser.close()
                   print('页面渲染完成，开始解析...')
 
               soup = BeautifulSoup(html, 'html.parser')
 
-              # 查找所有包含 /wg/ 的详情页链接
-              all_links = soup.find_all('a', href=True)
-              print(f'渲染后共找到 {len(all_links)} 个链接')
+              # 只从游戏列表容器中提取
+              container = soup.select_one('ul.zy_game_lb')
+              if container:
+                  items = container.select('li')
+                  print(f'列表容器内找到 {len(items)} 个 li')
+                  for li in items:
+                      if len(games) >= 5:
+                          break
+                      a = li.find('a', href=True)
+                      if not a:
+                          continue
+                      href = a.get('href', '')
+                      if not re.search(r'/wg/\d+/\d+\.html', href):
+                          continue
+                      if href in seen_hrefs:
+                          continue
+                      seen_hrefs.add(href)
 
-              for a in all_links:
-                  if len(games) >= 5:
-                      break
-                  href = a.get('href', '')
-                  
-                  # 匹配游戏详情页链接：/wg/数字/数字.html
-                  if not re.search(r'/wg/\d+/\d+\.html', href):
-                      continue
-                  if href in seen_hrefs:
-                      continue
-                  seen_hrefs.add(href)
+                      if not href.startswith('http'):
+                          href = 'https://www.lizisy.com' + href
 
-                  if not href.startswith('http'):
-                      href = 'https://www.lizisy.com' + href
+                      name = ''
+                      h3 = li.find('h3')
+                      if h3:
+                          name = h3.get_text(strip=True)
+                      if not name:
+                          name = a.get_text(strip=True).split('\n')[0].strip()
+                      if not name or len(name) < 2:
+                          continue
 
-                  # 提取名称
-                  name = ''
-                  h3 = a.find('h3')
-                  if h3:
-                      name = h3.get_text(strip=True)
-                  else:
-                      text = a.get_text(strip=True)
-                      name = text.split('\n')[0].strip() if text else ''
+                      img = li.find('img')
+                      icon_url = ''
+                      if img:
+                          icon_url = img.get('src') or img.get('data-src') or img.get('data-original') or ''
+                          if icon_url.startswith('//'):
+                              icon_url = 'https:' + icon_url
+                          elif icon_url.startswith('/'):
+                              icon_url = 'https://www.lizisy.com' + icon_url
 
-                  if not name or len(name) < 2:
-                      continue
-
-                  # 提取图标
-                  img = a.find('img')
-                  if not img:
-                      parent_li = a.find_parent('li')
-                      if parent_li:
-                          img = parent_li.find('img')
-
-                  icon_url = ''
-                  if img:
-                      icon_url = img.get('src') or img.get('data-src') or img.get('data-original') or ''
-                      if icon_url.startswith('//'):
-                          icon_url = 'https:' + icon_url
-                      elif icon_url.startswith('/'):
-                          icon_url = 'https://www.lizisy.com' + icon_url
-
-                  games.append({
-                      'name': name,
-                      'icon': icon_url,
-                      'tags': ['热门推荐'],
-                      'desc': f'{name}，热门推荐游戏，快来体验！',
-                      'url': href
-                  })
+                      games.append({
+                          'name': name,
+                          'icon': icon_url,
+                          'tags': ['热门推荐'],
+                          'desc': f'{name}，热门推荐游戏，快来体验！',
+                          'url': href
+                      })
+              else:
+                  print('⚠️ 未找到 ul.zy_game_lb 容器')
 
               print(f'成功提取 {len(games)} 个游戏')
               for g in games:
@@ -118,7 +116,6 @@ jobs:
           except Exception as e:
               print('抓取失败:', e)
 
-          # 兜底保护：只有成功抓取到游戏才覆盖文件
           if len(games) > 0:
               with open('games.json', 'w', encoding='utf-8') as f:
                   json.dump(games, f, ensure_ascii=False, indent=2)
