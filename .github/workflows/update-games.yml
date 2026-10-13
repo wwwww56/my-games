@@ -1,4 +1,4 @@
-name: 每日更新游戏数据（自动清缓存版）
+name: 每日更新游戏数据（最新上架版）
 
 on:
   schedule:
@@ -24,10 +24,9 @@ jobs:
           pip install requests beautifulsoup4 playwright
           playwright install chromium
 
-      - name: 抓取最新游戏数据并更新 games.json
+      - name: 抓取最新上架游戏并更新 games.json
         run: |
           cat << 'EOF' > fetch_games.py
-          # 这里是你原有的 python 抓取脚本
           import json, re, time
           from playwright.sync_api import sync_playwright
           from bs4 import BeautifulSoup
@@ -47,17 +46,40 @@ jobs:
                   page = context.new_page()
                   print('正在打开页面...')
                   page.goto(url, wait_until='networkidle', timeout=30000)
+
+                  # ========== 关键步骤：点击“最新上架”标签 ==========
+                  try:
+                      # 尝试多种方式定位“最新上架”标签
+                      latest_tab = page.get_by_text('最新上架', exact=False).first
+                      latest_tab.click()
+                      print('已点击“最新上架”标签')
+                      time.sleep(3)  # 等待列表切换完成
+                  except Exception as e:
+                      print('未找到“最新上架”标签，使用默认视图:', e)
+                      # 兜底：尝试点击 a 标签里含“最新上架”文字
+                      try:
+                          page.click('a:has-text("最新上架")')
+                          print('已点击“最新上架”链接')
+                          time.sleep(3)
+                      except:
+                          print('两种方式都失败，使用当前视图')
+
+                  # 等待游戏列表容器渲染
                   try:
                       page.wait_for_selector('ul.zy_game_lb li', timeout=10000)
                   except:
+                      print('未找到 ul.zy_game_lb，等待 5 秒后继续')
                       time.sleep(5)
+
                   html = page.content()
                   browser.close()
+                  print('页面渲染完成，开始解析...')
 
               soup = BeautifulSoup(html, 'html.parser')
               container = soup.select_one('ul.zy_game_lb')
               if container:
                   items = container.select('li')
+                  print(f'列表容器内找到 {len(items)} 个 li')
                   for li in items:
                       if len(games) >= 5:
                           break
@@ -69,25 +91,32 @@ jobs:
                       seen_hrefs.add(href)
                       if not href.startswith('http'):
                           href = 'https://www.lizisy.com' + href
+
                       name = ''
                       h3 = li.find('h3')
                       if h3: name = h3.get_text(strip=True)
                       if not name: name = a.get_text(strip=True).split('\n')[0].strip()
                       if not name or len(name) < 2: continue
+
                       img = li.find('img')
                       icon_url = ''
                       if img:
                           icon_url = img.get('src') or img.get('data-src') or img.get('data-original') or ''
                           if icon_url.startswith('//'): icon_url = 'https:' + icon_url
                           elif icon_url.startswith('/'): icon_url = 'https://www.lizisy.com' + icon_url
+
                       games.append({
                           'name': name,
                           'icon': icon_url,
-                          'tags': ['热门推荐'],
-                          'desc': f'{name}，热门推荐游戏，快来体验！',
+                          'tags': ['最新上架'],
+                          'desc': f'{name}，最新上架热门游戏，快来体验！',
                           'url': href
                       })
+
               print(f'成功提取 {len(games)} 个游戏')
+              for g in games:
+                  print(f'  - {g["name"]}  →  {g["url"]}')
+
           except Exception as e:
               print('抓取失败:', e)
 
@@ -108,7 +137,6 @@ jobs:
           git diff --staged --quiet || git commit -m "自动更新游戏数据 $(date +%Y-%m-%d)"
           git push
 
-      # 👇 新增步骤：自动清除 CDN 缓存
       - name: 清除 CDN 缓存
         run: |
           echo "正在清除 jsDelivr 缓存..."
