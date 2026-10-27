@@ -1,5 +1,23 @@
 [
   {
+    "name": "热血之怒（官方魔影狂刀3折版）",
+    "icon": "http://oss.lizisy.com/upload/operator/20261023/67a5cb9993aa093eb53ad3a13af9cb40.png",
+    "tags": [
+      "最新上架"
+    ],
+    "desc": "热血之怒（官方魔影狂刀3折版），最新上架热门游戏，快来体验！",
+    "url": "https://www.lizisy.com/wg/426/21355.html"
+  },
+  {
+    "name": "吞噬星空：黎明（0.05折十倍代金券福利版）",
+    "icon": "http://oss.lizisy.com/data/upload/game/20261026/6adf222c5c47f.png",
+    "tags": [
+      "最新上架"
+    ],
+    "desc": "吞噬星空：黎明（0.05折十倍代金券福利版），最新上架热门游戏，快来体验！",
+    "url": "https://www.lizisy.com/wg/426/21226.html"
+  },
+  {
     "name": "飞虫大冒险（0.1折江湖享豪礼）",
     "icon": "http://oss.lizisy.com/data/upload/game/20261023/6adb28cf29746.png",
     "tags": [
@@ -25,23 +43,5 @@
     ],
     "desc": "战西游（0.1折免费版）免费版，最新上架热门游戏，快来体验！",
     "url": "https://www.lizisy.com/wg/426/21379.html"
-  },
-  {
-    "name": "点击冒险之旅（0.1折无限大乱斗）",
-    "icon": "http://oss.lizisy.com/data/upload/game/20261023/6adb28753b6f2.png",
-    "tags": [
-      "最新上架"
-    ],
-    "desc": "点击冒险之旅（0.1折无限大乱斗），最新上架热门游戏，快来体验！",
-    "url": "https://www.lizisy.com/wg/426/21179.html"
-  },
-  {
-    "name": "云上大陆（1折648免费版）免费版",
-    "icon": "http://oss.lizisy.com/upload/operator/20261013/b1e99691efb73e0e346a5b94e0798cb5.gif",
-    "tags": [
-      "最新上架"
-    ],
-    "desc": "云上大陆（1折648免费版）免费版，最新上架热门游戏，快来体验！",
-    "url": "https://www.lizisy.com/wg/426/21375.html"
   }
 ]
