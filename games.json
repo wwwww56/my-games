@@ -1,5 +1,14 @@
 [
   {
+    "name": "时光特攻队",
+    "icon": "http://oss.lizisy.com/data/upload/game/20261118/6afd787f4426b.png",
+    "tags": [
+      "最新上架"
+    ],
+    "desc": "时光特攻队，最新上架热门游戏，快来体验！",
+    "url": "https://www.lizisy.com/wg/426/21405.html"
+  },
+  {
     "name": "云上契约（0.1折冒险大作战）",
     "icon": "http://oss.lizisy.com/data/upload/game/20261116/6afa6c096cfed.gif",
     "tags": [
@@ -34,14 +43,5 @@
     ],
     "desc": "城池攻坚战（内置0.1折国战特权），最新上架热门游戏，快来体验！",
     "url": "https://www.lizisy.com/wg/426/21428.html"
-  },
-  {
-    "name": "卓越世界（圣域降临1折免费版）免费版",
-    "icon": "http://oss.lizisy.com/upload/operator/20261106/4e0a3bbb074c3dbca74d9717f2a73dc1.png",
-    "tags": [
-      "最新上架"
-    ],
-    "desc": "卓越世界（圣域降临1折免费版）免费版，最新上架热门游戏，快来体验！",
-    "url": "https://www.lizisy.com/wg/426/21418.html"
   }
 ]
